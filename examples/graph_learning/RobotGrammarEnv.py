@@ -102,21 +102,21 @@ class RobotGrammarEnv:
 
         return actions_2
 
-    def get_available_actions_mask_batch(self, state_n):
+    def get_available_actions_mask_batch(self, state_n, default=-np.inf):
         ''' 1 if the action is ok -inf otherwise '''
-        actions_2_n = np.zeros((len(state_n), 20))  # 20 actions total
+        actions_2_n = np.zeros((len(state_n), 16))  # 20 actions total
         action_not_available_n = np.zeros((len(state_n),))
 
         for i, state in enumerate(state_n):
-            actions_2_n[i] = np.array([1 if list(get_applicable_matches(rule, state)) else -np.inf for rule in self.rules])
-            action_not_available_n[i] = np.sum(~np.isinf(actions_2_n[i])) == 0
+            actions_2_n[i] = np.array([1 if list(get_applicable_matches(rule, state)) else default for rule in self.rules])
+            action_not_available_n[i] = np.sum(~np.isinf(actions_2_n[i])) == 0  # error if not use default
 
         return actions_2_n, action_not_available_n
 
-    def get_available_actions_mask(self, state):
+    def get_available_actions_mask(self, state, default=-np.inf):
         ''' 1 if the action is ok -inf otherwise '''
-        actions_2 = np.array([1 if list(get_applicable_matches(rule, state)) else -np.inf for rule in self.rules])
-        action_not_available = np.sum(~np.isinf(actions_2)) == 0
+        actions_2 = np.array([1 if list(get_applicable_matches(rule, state)) else default for rule in self.rules])
+        action_not_available = np.sum(~np.isinf(actions_2)) == 0 # error if not use default
 
         return actions_2, action_not_available
 
@@ -145,6 +145,10 @@ class RobotGrammarEnv:
             if not np.isnan(reward):
                 print('[H]', end='\t')
                 return None, reward
+
+            if len(self.rule_seq) <= 6:
+                # reward
+                return None, -1.0
 
             # self.df[self.df.rule_seq == str(self.rule_seq)]['result'].values
             # self.df[self.df.rule_seq == str(self.rule_seq)]
