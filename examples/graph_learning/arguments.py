@@ -54,8 +54,8 @@ def get_parser():
 
     # custom
     parser.add_argument('--freq-update', type=int, default=20, help="[DQL] Update Frequency target network")
-    parser.add_argument('--batch-norm', type=bool, default=20, help="[DQL] GNN - Batch Normalization")
+    parser.add_argument('--batch-norm', default=False, action='store_true', help="[DQL] GNN - Batch Normalization")
     parser.add_argument('--layer-size', type=int, default=20, help="[DQL] GNN - Layer Size")
-    parser.add_argument('--store-cache', type=bool, default=20, help="[DQL] Store on cache simulated results")
+    parser.add_argument('--store-cache', default=False, action='store_true', help="[DQL] Store on cache simulated results")
 
     return parser

@@ -96,6 +96,9 @@ class Net(torch.nn.Module):
     def __init__(self, max_nodes, num_channels, num_outputs, layer_size=64, batch_normalization=False):
         super(Net, self).__init__()
 
+        self.layer_size = layer_size
+        self.num_channels = num_channels
+
         num_nodes = ceil(0.25 * max_nodes)
         self.gnn1_pool = GNN(num_channels, layer_size, num_nodes, batch_normalization=batch_normalization, add_loop=True)
         self.gnn1_embed = GNN(num_channels, layer_size, layer_size, batch_normalization=batch_normalization, add_loop=True, lin=False)
@@ -109,11 +112,19 @@ class Net(torch.nn.Module):
         self.lin1 = torch.nn.Linear(3 * layer_size, layer_size)
         self.lin2 = torch.nn.Linear(layer_size, num_outputs)
 
-    def forward(self, x, adj, mask=None):
+        self.lin1_mask_rules = torch.nn.Linear(16, 256) # num rules, fixed was 20
+        self.lin2_mask_rules = torch.nn.Linear(256, 1920)
+
+    def forward(self, x, adj, mask=None, rules_mask=None):
         s = self.gnn1_pool(x, adj, mask)
         x = self.gnn1_embed(x, adj, mask)
 
         x, adj, l1, e1 = dense_diff_pool(x, adj, s, mask)
+
+        if rules_mask is not None:
+            rules_mask = F.relu(self.lin1_mask_rules(rules_mask))
+            rules_mask = F.relu(self.lin2_mask_rules(rules_mask))
+            x *= rules_mask.reshape((-1, 10, 192))
 
         s = self.gnn2_pool(x, adj)
         x = self.gnn2_embed(x, adj)

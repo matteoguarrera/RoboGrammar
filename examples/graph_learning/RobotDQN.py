@@ -22,11 +22,11 @@ import datetime
 
 
 class RobotRL:
-    def __init__(self, rules, env_dummy, args_main):
-
+    def __init__(self, rules, env_dummy, args_main, log_name):
+        print('Number of rules: ', rules)
         self.max_nodes = args_main.depth * 2
         self.rules = rules
-
+        self.log_name = log_name
         # state preprocessor
         # Find all possible link labels, so they can be one-hot encoded
         all_labels = set()
@@ -70,17 +70,7 @@ class RobotRL:
                             'store_cache': args_main.store_cache,
                             'seed': args_main.seed}
 
-        self.summ_writer = SummaryWriter(f'runs/depth_{args_main.depth}_'
-                                         f'num_{args_main.num_iterations}_'
-                                         f'bs_{args_main.batch_size}_'
-                                         f'lr_{args_main.lr}_'
-                                         f'es_{args_main.eps_start}_'
-                                         f'ee_{args_main.eps_end}_'
-                                         f'frq_{args_main.freq_update}_'
-                                         f'bn_{args_main.batch_norm}_'
-                                         f'size_{args_main.layer_size}_'
-                                         f's_{args_main.seed}_'
-                                         f'{datetime.datetime.now():%Y%m%d_%H%M%S}', flush_secs=1, max_queue=1)
+        self.summ_writer = SummaryWriter('runs/'+log_name, flush_secs=2, max_queue=1)
 
     def log_scalar(self, scalar, name, step_):
         self.summ_writer.add_scalar('{}'.format(name), scalar, step_)
@@ -89,12 +79,17 @@ class RobotRL:
         ''' e-greedy select action '''
         sample = random.random()
         if sample > eps:
-            available_actions_mask, action_not_available = env.get_available_actions_mask(state)
+            available_actions_mask, action_not_available = env.get_available_actions_mask(state, default=0)
             if action_not_available:
                 return None
             else:
 
-                evals, _, _ = self.Q(*self.preprocess_state(state))
+                features_tp, adj_matrix_tp, masks_tp = self.preprocess_state(state)
+                evals, _l, _e = self.Q(features_tp,
+                                       adj_matrix_tp,
+                                       masks_tp,
+                                       torch.tensor(available_actions_mask, dtype=torch.double).unsqueeze(0))
+                available_actions_mask = np.where(available_actions_mask == 0, -np.inf, 1)  # change the values to 1/0 to -inf/1
 
                 evals_masked = evals.squeeze().detach().numpy() + available_actions_mask  # -inf is not available
                 return np.argmax(evals_masked)  # best action
